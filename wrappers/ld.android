@@ -1,0 +1,14 @@
+#!/bin/sh
+cleared=
+
+for x; do
+    test "$cleared" || set --
+    cleared=1
+
+    case "$x" in
+    -lssp_nonshared) ;;
+    *) set -- "$@" "$x" ;;
+    esac
+done
+
+exec ld.lld -nostdlib "$@"
