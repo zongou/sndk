@@ -1,0 +1,14 @@
+#!/bin/sh
+set -eu
+
+## Remove the default lib ssp_nonshared for android
+## https://github.com/alpinelinux/aports/blob/master/main/clang17/30-Enable-stack-protector-by-default-for-Alpine-Linux.patch#L10
+for argv in "$@"; do
+    case "${argv}" in
+    -lssp_nonshared) ;;
+    *) set -- "$@" "${argv}" ;;
+    esac
+    shift
+done
+
+/usr/bin/ld.lld "$@"

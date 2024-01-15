@@ -1,0 +1,51 @@
+#!/bin/sh
+set -eu
+
+PROGRAM=$(basename $0)
+TOOLCHAIN=$(dirname "$(dirname "$(realpath "$0")")")
+RESOURCE=${TOOLCHAIN}/resource
+SYSROOT=${TOOLCHAIN}/sysroot
+CLANG=${CLANG-clang}
+
+case "${PROGRAM}" in
+*clang) BIN=${CLANG} ;;
+*clang++) BIN="${CLANG} -lc++" ;;
+esac
+
+case ${PROGRAM} in
+clang | clang++) TARGET=aarch64-linux-android21 ;;
+*) TARGET=${TARGET-$(echo "${PROGRAM}" | grep -Eo ".+-linux-android(eabi)?[0-9]+")} ;;
+esac
+
+ANDROID_ABI=$(echo "${TARGET}" | grep -Eo ".+-linux-android(eabi)?")
+ANDROID_API=$(echo "${TARGET}" | grep -Eo "[0-9]+$")
+# echo ${TARGET} ${ANDROID_ABI} ${ANDROID_API}
+
+# version_info=$(${CLANG} -v 2>&1)
+# if echo "${version_info}" | grep -q alpine; then
+# 	set -- "$@" -B "${TOOLCHAIN}/wrappers/alpine"
+# # elif echo "${version_info}" | grep -q zig; then
+# # 	set -- "$@" -B "${TOOLCHAIN}/wrappers/zig"
+# fi
+
+set -- \
+	-B "${TOOLCHAIN}/bin" \
+	-fuse-ld=android \
+	-resource-dir="${RESOURCE}" \
+	--sysroot="${SYSROOT}" \
+	--target="${TARGET}" \
+	"$@"
+
+# Static compilation for Android api level < 29
+# https://github.com/termux/termux-packages/issues/8273
+if test "${ANDROID_API}" -lt 29; then
+	for arg in "$@"; do
+		if test "${arg}" = "-static"; then
+			set -- "$@" -Wl,--gc-sections
+			break
+		fi
+	done
+fi
+
+# echo ${BIN} "$@"
+exec ${BIN} "$@"
