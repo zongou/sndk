@@ -55,23 +55,23 @@ setup_sdk() {
 setup_ndk() {
 	msg "Setting up NDK ..."
 	NDK_VERSION=r27
-	ANDROID_NDK_HOME="${PREFIX}/lib/android-ndk-${NDK_VERSION}"
+	ANDROID_NDK_ROOT="${PREFIX}/lib/android-ndk-${NDK_VERSION}"
 	NDK_PACKAGE="${RES_DIR}/android-ndk-${NDK_VERSION}-linux.zip"
 	NDK_URL="https://dl.google.com/android/repository/android-ndk-${NDK_VERSION}-linux.zip"
 
-	if ! test -e "${ANDROID_NDK_HOME}"; then
+	if ! test -e "${ANDROID_NDK_ROOT}"; then
 		if ! test -e "${NDK_PACKAGE}"; then
 			curl -Lk "${NDK_URL}" -o "${NDK_PACKAGE}.tmp"
 			mv "${NDK_PACKAGE}.tmp" "${NDK_PACKAGE}"
 		fi
-		(cd "$(dirname "${ANDROID_NDK_HOME}")" && unzip -q "${NDK_PACKAGE}")
+		(cd "$(dirname "${ANDROID_NDK_ROOT}")" && unzip -q "${NDK_PACKAGE}")
 	fi
 
 	## Fix: ERROR: Unknown host CPU architecture: aarch64
-	sed -i 's/arm64)/arm64|aarch64)/' "${ANDROID_NDK_HOME}/build/tools/ndk_bin_common.sh"
+	sed -i 's/arm64)/arm64|aarch64)/' "${ANDROID_NDK_ROOT}/build/tools/ndk_bin_common.sh"
 
 	## Replace toolchain
-	TOOLCHAIN="${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/linux-x86_64"
+	TOOLCHAIN="${ANDROID_NDK_ROOT}/toolchains/llvm/prebuilt/linux-x86_64"
 	CLANG_URL=https://github.com/dzbarsky/static-clang/releases/download/v18.1.2-1/linux_arm64_minimal.tar.xz
 	CLANG_PACKAGE="${RES_DIR}/linux_arm64_minimal.tar.xz"
 	if ! "${TOOLCHAIN}/bin/clang" --version >/dev/null 2>&1; then
@@ -107,7 +107,7 @@ setup_ndk() {
 		fi
 	done
 
-	msg "ANDROID_NDK_HOME=${ANDROID_NDK_HOME}"
+	msg "ANDROID_NDK_ROOT=${ANDROID_NDK_ROOT}"
 	msg "TOOLCHAIN=${TOOLCHAIN}"
 	msg "Run: \${TOOLCHAIN}/bin/aarch64-linux-android21-clang --version"
 	"${TOOLCHAIN}/bin/aarch64-linux-android21-clang" --version
@@ -115,7 +115,7 @@ setup_ndk() {
 
 setup_gradle() {
 	msg "Setting up gradle ..."
-	if ! command -v aapt2 >/dev/null; then
+	if command -v apt >/dev/null && ! command -v aapt2 >/dev/null; then
 		apt install -y aapt2
 	fi
 
@@ -136,7 +136,7 @@ setup_profile() {
 	## Write env to profile
 	cat <<EOF >"${PROFILE}"
 export ANDROID_HOME="${ANDROID_HOME}"
-export ANDROID_NDK_HOME="${ANDROID_NDK_HOME}"
+export ANDROID_NDK_ROOT="${ANDROID_NDK_ROOT}"
 export SDKMANAGER="${SDKMANAGER}"
 EOF
 
@@ -145,8 +145,15 @@ EOF
 	cat "${PROFILE}"
 }
 
-setup_jdk
-setup_sdk
-setup_ndk
+# setup_jdk
+# setup_sdk
+# setup_ndk
 setup_gradle
-setup_profile
+# setup_profile
+
+# main(){
+# 	while test $@ -gt 0; do
+# 		eval $1
+# 		shift
+# 	done
+# }

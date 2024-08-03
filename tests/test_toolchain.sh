@@ -15,7 +15,7 @@ TARGET=aarch64-linux-android21
 if command -v clang; then
 	CLANG=clang
 elif command -v zig; then
-	CLANG="zig cc"
+	CLANG="zig clang"
 else
 	print "Cannot find clang or zig\n" >&2
 	exit 1
