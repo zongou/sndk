@@ -1,28 +1,25 @@
 #!/bin/sh
 set -eu
 
-msg() { printf "%s\n" "$*" >&2; }
-
-TMPDIR=${TMPDIR-/tmp}
-
-dl_cmd="curl -Lk"
-if ! command -v curl >/dev/null && command -v wget >/dev/null; then
-	dl_cmd="wget -O-"
-fi
-# ==============================================================
-
-WORKSPACE=$(dirname $(realpath $0))
-PROGRAM="$(basename "$0")"
-
-if ! command -v clang >/dev/null; then
-	msg "Cannot find clang."
-	exit 1
-fi
+ROOT_DIR=$(dirname $(realpath $0))
+. $ROOT_DIR/utils.sh
 
 setup() {
 	ANDROID_NDK_ROOT="$1"
 
-	# msg "Setting up NDK ..."
+	if ! command -v clang >/dev/null; then
+		msg "Cannot find clang."
+		exit 1
+	fi
+
+	for tool in clang clang++ ld.lld which make; do
+		if ! command -v "${tool}" >/dev/null; then
+			msg "Cannot find '${tool}'"
+			exit 1
+		fi
+	done
+
+	msg "Setting up NDK ..."
 	# NDK_VERSION=r27
 	# ANDROID_NDK_ROOT="${PREFIX}/lib/android-ndk-${NDK_VERSION}"
 	# NDK_PACKAGE="${RES_DIR}/android-ndk-${NDK_VERSION}-linux.zip"
@@ -61,71 +58,73 @@ setup() {
 	# 	fi
 	# fi
 
-	## Replace python
-	if command -v python3 >/dev/null; then
-		rm -rf "${TOOLCHAIN}/python3"
-		mkdir -p "${TOOLCHAIN}/python3/bin"
-		ln -snf "$(command -v python3)" "${TOOLCHAIN}/python3/bin/python3"
-	else
-		msg "Warming: Cannot find 'python3'"
-		cat <<-EOF >"${TOOLCHAIN}/python3/bin/python3"
-			printf "Called python with args: '%s'\nIn dir: %s\n" "\$*" "\${PWD}" >&2
-		EOF
-		chmod +x "${TOOLCHAIN}/python3/bin/python3"
-	fi
-
-	## NDK requires tool 'which' and 'make'
-	for tool in which make; do
-		if ! command -v "${tool}" >/dev/null; then
-			msg "Cannot find '${tool}'"
-			exit 1
-		fi
-	done
-
 	## Create target wrapper
 	rm -rf "${TOOLCHAIN}/bin" && mkdir "${TOOLCHAIN}/bin"
-	cp "${WORKSPACE}/wrappers/target_wrapper" "${TOOLCHAIN}/bin/clang"
+	cp "${ROOT_DIR}/wrappers/target_wrapper" "${TOOLCHAIN}/bin/clang"
 	NDK_CLANG_RESOURCE="$(find "${TOOLCHAIN}/lib/clang" -path "*/[0-9][0-9]" -type d -exec realpath {} \;)"
 	sed -i "s^RESOURCE_DIR=.*^RESOURCE_DIR=${NDK_CLANG_RESOURCE}^" "${TOOLCHAIN}/bin/clang"
 	ln -snf "clang" "${TOOLCHAIN}/bin/clang++"
 
 	if ${CLANG-clang} -v 2>&1 | grep -q alpine; then
-		cp "${WORKSPACE}/wrappers/alpine/ld.lld" "${TOOLCHAIN}/bin/ld.lld"
+		cp "${ROOT_DIR}/wrappers/alpine/ld.lld" "${TOOLCHAIN}/bin/ld.lld"
 	fi
 
 	find "${TOOLCHAIN}/sysroot/usr/lib" -maxdepth 1 -mindepth 1 -type d | while IFS= read -r dir; do
 		ANDROID_ABI=$(basename $dir)
 		find "${dir}" -maxdepth 1 -mindepth 1 -type d | sort | while IFS= read -r di; do
 			ANDROID_API=$(basename "$di")
-			msg "link ${ANDROID_ABI}${ANDROID_API}-clang"
+			msg "softlink ${ANDROID_ABI}${ANDROID_API}-clang"
 			ln -snf "clang" "${TOOLCHAIN}/bin/${ANDROID_ABI}${ANDROID_API}-clang"
-			msg "link ${ANDROID_ABI}${ANDROID_API}-clang++"
+			msg "softlink ${ANDROID_ABI}${ANDROID_API}-clang++"
 			ln -snf "clang" "${TOOLCHAIN}/bin/${ANDROID_ABI}${ANDROID_API}-clang++"
 		done
 	done
 
 	## Link llvm-wrapper
-	find "/usr/bin" -name "llvm-*" | while IFS= read -r f; do
-		echo link "$(basename $f)"
+	find "${PREFIX-/usr}/bin" -name "llvm-*" | while IFS= read -r f; do
+		msg "softlink $(basename $f)"
 		ln -snf "$f" "${TOOLCHAIN}/bin/$(basename $f)"
 	done
 
 	## Remove unused resource
+	rm -rf "${TOOLCHAIN}/python3"
 	rm -rf "${TOOLCHAIN}/musl"
 	find "${TOOLCHAIN}/lib" -maxdepth 1 -mindepth 1 -not -name clang -exec rm -rf {} \;
 	find "${TOOLCHAIN}" -maxdepth 5 -path "*/lib/clang/[0-9][0-9]/lib/*" -not -name linux -exec rm -rf {} \;
-}
 
-show_help() {
-	printf "Usage: %s <ANDROID_NDK_ROOT>\n" "${PROGRAM}"
-}
-
-main() {
-	if test $# -eq 1; then
-		setup "$1"
+	## Replace python
+	mkdir -p "${TOOLCHAIN}/python3/bin"
+	if command -v python3 >/dev/null; then
+		ln -snf "$(command -v python3)" "${TOOLCHAIN}/python3/bin/python3"
 	else
-		show_help
+		msg "Warning: Cannot find 'python3'"
+		cat <<-EOF >"${TOOLCHAIN}/python3/bin/python3"
+			printf "Called python with args: '%s'\nIn dir: %s\n" "\$*" "\${PWD}" >&2
+		EOF
+		chmod +x "${TOOLCHAIN}/python3/bin/python3"
 	fi
 }
 
-main "$@"
+check() {
+	msg "Checking NDK ..."
+	TOOLCHAIN="${1}/toolchains/llvm/prebuilt/linux-x86_64"
+
+	${TOOLCHAIN}/bin/aarch64-linux-android21-clang ${ROOT_DIR}/tests/hello.c -o ${TMPDIR}/helloc
+	file ${TMPDIR}/helloc
+
+	${TOOLCHAIN}/bin/aarch64-linux-android21-clang++ ${ROOT_DIR}/tests/hello.cpp -o ${TMPDIR}/hellocpp
+	file ${TMPDIR}/hellocpp
+
+	${TOOLCHAIN}/bin/aarch64-linux-android21-clang ${ROOT_DIR}/tests/hello.c -o ${TMPDIR}/helloc-static -static
+	file ${TMPDIR}/helloc-static
+
+	${TOOLCHAIN}/bin/aarch64-linux-android24-clang++ ${ROOT_DIR}/tests/hello.cpp -o ${TMPDIR}/hellocpp-static -static
+	file ${TMPDIR}/hellocpp-static
+}
+
+if test $# -eq 1; then
+	setup "$1"
+	check "$1"
+else
+	msg "Usage: ${PROGRAM} [ANDROID_NDK_ROOT]"
+fi

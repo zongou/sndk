@@ -8,18 +8,12 @@ RESOURCE_DIR=${TOOLCHAIN}/resource
 SYSROOT=${TOOLCHAIN}/sysroot
 TARGET=aarch64-linux-android21
 
-CLANG=${CLANG-clang}
-CLANGXX=${CLANGXX-clang++}
+CLANG="${CLANG-clang}"
+CLANGXX="${CLANGXX-clang++}"
 
 case "${PROGRAM}" in
-clang | clang++ | *-linux-android*-clang | *-linux-android*-clang++)
-	case "${PROGRAM}" in
-	clang | *-linux-android*-clang) BIN=${CLANG} ;;
-	clang++ | *-linux-android*-clang++) BIN=${CLANGXX} ;;
-	esac
-
+*clang | *clang++)
 	if ! test "${1+1}" || { test "${1+1}" && ! test "$1"x = "-cc1"x; }; then
-		## Get target triple
 		case "${PROGRAM}" in
 		*-linux-android*-clang | *-linux-android*-clang++)
 			TARGET=$(echo "${PROGRAM}" | grep -E -o "(aarch64|x86_64|i686|riscv64)-linux-android[1-9]+|armv7a-linux-androideabi[1-9]+")
@@ -33,16 +27,22 @@ clang | clang++ | *-linux-android*-clang | *-linux-android*-clang++)
 			;;
 		esac
 
-		if ${BIN} -v 2>&1 | grep -q llvmbox; then
+		case "${PROGRAM}" in
+		*clang) BIN="${CLANG}" ;;
+		*clang++) BIN="${CLANGXX}" ;;
+		esac
+
+		version_info=$("${BIN}" -v 2>&1)
+		if echo "${version_info}" | grep -q llvmbox; then
 			## These options are necessarily for llvmbox
 			sys_include_dir="${SYSROOT}/usr/include/$(echo "${TARGET}" | sed 's/armv7a/arm/' | sed -E 's/(android(eabi)?)[0-9]+/\1/')"
 			set -- "$@" \
 				-isystem "${SYSROOT}/usr/include/c++/v1" \
 				-isystem "${SYSROOT}/usr/include" \
 				-isystem "${sys_include_dir}"
-		elif ${BIN} -v 2>&1 | grep -q alpine; then
+		elif echo "${version_info}" | grep -q alpine; then
 			set -- "$@" -B "${TOOLCHAIN}/wrappers/alpine"
-		elif ${BIN} -v 2>&1 | grep -q zig; then
+		elif echo "${version_info}" | grep -q zig; then
 			set -- "$@" -B "${TOOLCHAIN}/wrappers/zig"
 		fi
 
@@ -61,4 +61,4 @@ clang | clang++ | *-linux-android*-clang | *-linux-android*-clang++)
 	;;
 esac
 
-${BIN} "$@"
+exec "${BIN}" "$@"

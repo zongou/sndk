@@ -1,13 +1,13 @@
 #!/bin/sh
 set -eu
 
-MININDK_DIR="$(dirname "$(realpath "$0")")/.."
+ROOT_DIR=$(dirname $(dirname $(realpath $0)))
 
 ## ndk clang resource dir, get by command: <ndk_root>/toolchains/llvm/prebuilt/linux-x86_64/bin/clang --print-resource-dir
-RESOURCE_DIR="${MININDK_DIR}/resource"
+RESOURCE_DIR="${ROOT_DIR}/resource"
 
 ## ndk sysroot, typically <ndk_root>/toolchains/llvm/prebuilt/linux-x86_64/sysroot/
-SYSROOT="${MININDK_DIR}/sysroot"
+SYSROOT="${ROOT_DIR}/sysroot"
 
 ## Android target triple
 TARGET=aarch64-linux-android21
@@ -26,17 +26,17 @@ fi
 # -isystem "${SYSROOT}/usr/include" \
 # -isystem "${SYSROOT}/usr/include/aarch64-linux-android"
 
-mkdir -p "${MININDK_DIR}/tests/output"
+mkdir -p "${ROOT_DIR}/tests/output"
 
 echo "Test C compiler..."
 ${CLANG} \
-	-B "${MININDK_DIR}/bin" \
+	-B "${ROOT_DIR}/bin" \
 	-resource-dir "${RESOURCE_DIR}" \
 	--sysroot="${SYSROOT}" \
 	--target="${TARGET}" \
 	-xc - \
 	"$@" \
-	-o "${MININDK_DIR}/tests/output/hello-c" \
+	-o "${ROOT_DIR}/tests/output/hello-c" \
 	<<-EOF
 		#include <stdio.h>
 
@@ -48,13 +48,13 @@ ${CLANG} \
 
 echo "Test C++ compiler..."
 ${CLANG} \
-	-B "${MININDK_DIR}/bin" \
+	-B "${ROOT_DIR}/bin" \
 	-resource-dir "${RESOURCE_DIR}" \
 	--sysroot="${SYSROOT}" \
 	--target="${TARGET}" \
 	-xc++ -lc++ - \
 	"$@" \
-	-o "${MININDK_DIR}/tests/output/hello-cpp" \
+	-o "${ROOT_DIR}/tests/output/hello-cpp" \
 	<<-EOF
 		#include <iostream>
 		using namespace std;
@@ -66,5 +66,5 @@ ${CLANG} \
 	EOF
 
 if command -v file >/dev/null; then
-	file "${MININDK_DIR}/tests/output/hello-c" "${MININDK_DIR}/tests/output/hello-cpp"
+	file "${ROOT_DIR}/tests/output/hello-c" "${ROOT_DIR}/tests/output/hello-cpp"
 fi
