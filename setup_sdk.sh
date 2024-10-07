@@ -7,12 +7,8 @@ ROOT_DIR=$(dirname $(realpath $0))
 setup() {
 	PREFIX_DIR="$1"
 
-	check_tools java
-	if test -f ${PREFIX}/etc/profile.d/java.sh; then
-		. ${PREFIX}/etc/profile.d/java.sh
-	fi
-
 	msg "Setting up SDK ..."
+	check_tools java
 	ANDROID_SDK_ROOT=${PREFIX_DIR}/android-sdk
 	CMDLINETOOLS_URL="https://dl.google.com/android/repository/commandlinetools-linux-${CMDLINETOOLS_VERSION}_latest.zip"
 	SDKMANAGER="${ANDROID_SDK_ROOT}/tools/bin/sdkmanager"
