@@ -61,6 +61,7 @@ setup() {
 	else
 		msg "Warning: Cannot find 'python3', ignored."
 		cat <<-EOF >"${TOOLCHAIN}/python3/bin/python3"
+			#!/bin/sh
 			printf "DRY RUN: python with args: '%s' In dir: %s\n" "\$*" "\${PWD}" >&2
 		EOF
 		chmod +x "${TOOLCHAIN}/python3/bin/python3"

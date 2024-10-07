@@ -31,6 +31,7 @@ export ANDROID_NDK_ROOT=${INSTALL_PREFIX}/android-ndk-${NDK_VERSION}
 EOF
 
 check_tools aapt2
+aapt2 version
 mkdir -p "${HOME}/.gradle"
 GRADLE_CONFIG="${HOME}/.gradle/gradle.properties"
 cat <<EOF >"${GRADLE_CONFIG}"
