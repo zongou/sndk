@@ -3,7 +3,7 @@ set -eu
 
 ROOT_DIR=$(dirname $(realpath $0))
 . ${ROOT_DIR}/config.sh
-PREFIX=${PREFIX-/}
+PREFIX=${PREFIX-}
 INSTALL_PREFIX=${PREFIX}/opt
 
 # SDK

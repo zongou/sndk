@@ -14,11 +14,12 @@ if ! test -d termux-app; then
 fi
 
 cd termux-app
-
 # sdk.dir=${ANDROID_HOME}
 rm -f local.properties
 cat <<EOF >local.properties
 ndk.dir=${ANDROID_NDK_ROOT}
+android.aapt2FromMavenOverride="/usr/local/bin/aapt2"
 EOF
 
-${GRADLE} clean assembleRelease
+# ${GRADLE} assembleRelease --info
+${GRADLE} assembleDebug
