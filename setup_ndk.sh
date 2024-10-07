@@ -8,7 +8,7 @@ setup() {
 	ANDROID_NDK_ROOT="$1"
 
 	msg "Setting up NDK ..."
-	check_tools clang clang++ ld.lld which make
+	check_tools clang clang++ ld.lld llvm-strip which make
 
 	## Fix: ERROR: Unknown host CPU architecture: aarch64
 	sed -i 's/arm64)/arm64|aarch64)/' "${ANDROID_NDK_ROOT}/build/tools/ndk_bin_common.sh"
